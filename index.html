@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUTOJOD - Real-time Parking Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Transition for smooth color changing on parking slots */
+        .parking-slot {
+            transition: all 0.3s ease-in-out;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <!-- Logo area -->
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md">
+                    <!-- Parking Icon -->
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-wide">AUTO<span class="text-blue-400">JOD</span></h1>
+                    <p class="text-xs text-blue-200">Smart Parking Solution</p>
+                </div>
+            </div>
+            
+            <!-- Location Title -->
+            <div class="text-center md:text-right bg-blue-800/50 px-4 py-2 rounded-lg border border-blue-700/50">
+                <p class="text-sm text-blue-200 mb-0.5">สถานที่ปัจจุบัน</p>
+                <h2 class="text-md md:text-lg font-semibold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    ตึกคณะครุศาสตร์อุตสาหกรรมและเทคโนโลยี
+                </h2>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8">
+        
+        <!-- Controls Dashboard -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <label for="floorSelect" class="font-medium text-slate-600 whitespace-nowrap">เลือกชั้นลานจอด:</label>
+                <select id="floorSelect" class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 outline-none">
+                    <option value="1">ชั้นที่ 1 (โซน A, B)</option>
+                    <option value="2">ชั้นที่ 2 (โซน C, D)</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <span class="text-sm text-slate-500 flex items-center gap-2">
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    Live Data
+                </span>
+                <button id="refreshBtn" class="w-full md:w-auto px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    อัปเดตข้อมูล
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Total Spots -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 border-l-4 border-l-blue-500">
+                <div class="w-14 h-14 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">ที่จอดรถทั้งหมด</p>
+                    <p class="text-3xl font-bold text-slate-800" id="totalSpotsCount">0</p>
+                </div>
+            </div>
+
+            <!-- Available Spots -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 border-l-4 border-l-emerald-500">
+                <div class="w-14 h-14 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">ช่องจอดว่าง (Available)</p>
+                    <div class="flex items-baseline gap-2">
+                        <p class="text-3xl font-bold text-emerald-600" id="availableSpotsCount">0</p>
+                        <span class="text-sm text-emerald-600/70 font-medium">คัน</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Occupied Spots -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center gap-4 border-l-4 border-l-rose-500">
+                <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-slate-500 mb-1">ไม่ว่าง (Occupied)</p>
+                    <div class="flex items-baseline gap-2">
+                        <p class="text-3xl font-bold text-rose-600" id="occupiedSpotsCount">0</p>
+                        <span class="text-sm text-rose-600/70 font-medium">คัน</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parking Grid Map -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div class="flex justify-between items-end mb-6 border-b border-slate-100 pb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800" id="floorTitle">แผนผังลานจอดรถ ชั้นที่ 1</h3>
+                    <p class="text-sm text-slate-500 mt-1">อัปเดตสถานะแบบเรียลไทม์</p>
+                </div>
+                
+                <!-- Map Legend -->
+                <div class="flex gap-4 text-sm font-medium">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-md bg-emerald-500 shadow-inner"></div>
+                        <span class="text-slate-600">ว่าง</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-md bg-rose-500 shadow-inner"></div>
+                        <span class="text-slate-600">ไม่ว่าง</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Grid Container -->
+            <div id="parkingGridContainer" class="flex flex-col gap-10 overflow-x-auto pb-4">
+                <!-- Zones will be rendered here by JS -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm">
+        <p>&copy; 2026 AUTOJOD Smart Parking Solution - Mockup Project.</p>
+    </footer>
+
+    <script>
+        // Data Structure to hold parking status
+        // true = available (green), false = occupied (red)
+        const parkingData = {
+            1: {
+                zones: ['A', 'B'],
+                spotsPerZone: 10,
+                spots: {}
+            },
+            2: {
+                zones: ['C', 'D'],
+                spotsPerZone: 10,
+                spots: {}
+            }
+        };
+
+        let currentFloor = 1;
+        let simulationInterval;
+
+        // Initialize mock data randomly
+        function initData() {
+            for (const floor in parkingData) {
+                const zones = parkingData[floor].zones;
+                const total = parkingData[floor].spotsPerZone;
+                
+                zones.forEach(zone => {
+                    for (let i = 1; i <= total; i++) {
+                        const spotId = `${zone}${i}`;
+                        // Randomize initial state: ~40% chance to be available
+                        parkingData[floor].spots[spotId] = Math.random() > 0.6; 
+                    }
+                });
+            }
+        }
+
+        // Render the parking grid for the current floor
+        function renderGrid() {
+            const container = document.getElementById('parkingGridContainer');
+            container.innerHTML = ''; // Clear current
+            
+            const floorData = parkingData[currentFloor];
+            
+            // Update Title
+            document.getElementById('floorTitle').textContent = `แผนผังลานจอดรถ ชั้นที่ ${currentFloor}`;
+
+            floorData.zones.forEach(zone => {
+                // Zone wrapper
+                const zoneDiv = document.createElement('div');
+                zoneDiv.className = 'w-full min-w-[600px]'; // Ensure min width for scrolling on mobile
+                
+                // Zone Header
+                const zoneHeader = document.createElement('h4');
+                zoneHeader.className = 'text-lg font-bold text-slate-700 mb-4 flex items-center gap-2';
+                zoneHeader.innerHTML = `<span class="bg-slate-200 text-slate-800 px-3 py-1 rounded-md text-sm">โซน ${zone}</span>`;
+                zoneDiv.appendChild(zoneHeader);
+
+                // Road layout: Top Row (Odds), Road, Bottom Row (Evens)
+                // To keep it simple, let's just make a grid of 2 rows x 5 columns per zone
+                const gridDiv = document.createElement('div');
+                gridDiv.className = 'grid grid-cols-5 gap-4 bg-slate-100 p-4 rounded-xl border border-slate-200';
+                
+                for (let i = 1; i <= floorData.spotsPerZone; i++) {
+                    const spotId = `${zone}${i}`;
+                    const isAvailable = floorData.spots[spotId];
+                    
+                    const spotEl = document.createElement('div');
+                    spotEl.id = `spot-${spotId}`;
+                    // Base styles + dynamic color based on status
+                    spotEl.className = `parking-slot h-24 rounded-lg border-2 shadow-sm flex flex-col items-center justify-center relative overflow-hidden transition-colors ${
+                        isAvailable 
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-700' 
+                        : 'bg-rose-50 border-rose-400 text-rose-700'
+                    }`;
+
+                    // Icon/Car simulation inside spot
+                    const iconSvg = isAvailable
+                        ? `<svg class="w-8 h-8 opacity-50 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+                        : `<svg class="w-8 h-8 opacity-80 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`;
+                    
+                    // Spot Label
+                    spotEl.innerHTML = `
+                        ${iconSvg}
+                        <span class="font-bold text-lg z-10">${spotId}</span>
+                        <div class="absolute inset-x-0 bottom-0 h-1.5 ${isAvailable ? 'bg-emerald-400' : 'bg-rose-400'}"></div>
+                    `;
+                    
+                    gridDiv.appendChild(spotEl);
+                }
+                
+                zoneDiv.appendChild(gridDiv);
+                container.appendChild(zoneDiv);
+            });
+
+            updateSummary();
+        }
+
+        // Calculate and update the summary numbers
+        function updateSummary() {
+            const floorData = parkingData[currentFloor];
+            let total = 0;
+            let available = 0;
+
+            // Iterate over all spots in current floor
+            for (const spotId in floorData.spots) {
+                total++;
+                if (floorData.spots[spotId]) {
+                    available++;
+                }
+            }
+
+            const occupied = total - available;
+
+            // Animate numbers (simple replacement here, but visually updating)
+            document.getElementById('totalSpotsCount').textContent = total;
+            document.getElementById('availableSpotsCount').textContent = available;
+            document.getElementById('occupiedSpotsCount').textContent = occupied;
+        }
+
+        // Simulate cars arriving and leaving
+        function simulateRealTime() {
+            // Clear existing interval to prevent duplicates
+            if (simulationInterval) clearInterval(simulationInterval);
+
+            simulationInterval = setInterval(() => {
+                const floorData = parkingData[currentFloor];
+                const spotIds = Object.keys(floorData.spots);
+                
+                // Pick 1 to 3 random spots to toggle status
+                const numChanges = Math.floor(Math.random() * 3) + 1;
+                
+                for(let i=0; i < numChanges; i++) {
+                    const randomSpotIdx = Math.floor(Math.random() * spotIds.length);
+                    const spotIdToChange = spotIds[randomSpotIdx];
+                    
+                    // Toggle boolean (available <-> occupied)
+                    floorData.spots[spotIdToChange] = !floorData.spots[spotIdToChange];
+                    
+                    // Update specific DOM element for performance instead of full re-render
+                    updateSingleSpotUI(spotIdToChange, floorData.spots[spotIdToChange]);
+                }
+                
+                // Update numbers in dashboard
+                updateSummary();
+                
+            }, 3000); // Trigger every 3 seconds
+        }
+
+        // Helper to update a single HTML spot element efficiently
+        function updateSingleSpotUI(spotId, isAvailable) {
+            const spotEl = document.getElementById(`spot-${spotId}`);
+            if (!spotEl) return;
+
+            // Update classes
+            spotEl.className = `parking-slot h-24 rounded-lg border-2 shadow-sm flex flex-col items-center justify-center relative overflow-hidden transition-colors ${
+                isAvailable 
+                ? 'bg-emerald-50 border-emerald-400 text-emerald-700' 
+                : 'bg-rose-50 border-rose-400 text-rose-700'
+            }`;
+
+            const iconSvg = isAvailable
+                ? `<svg class="w-8 h-8 opacity-50 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+                : `<svg class="w-8 h-8 opacity-80 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`;
+
+            spotEl.innerHTML = `
+                ${iconSvg}
+                <span class="font-bold text-lg z-10">${spotId}</span>
+                <div class="absolute inset-x-0 bottom-0 h-1.5 ${isAvailable ? 'bg-emerald-400' : 'bg-rose-400'}"></div>
+            `;
+        }
+
+        // Event Listeners
+        document.getElementById('floorSelect').addEventListener('change', (e) => {
+            currentFloor = parseInt(e.target.value);
+            renderGrid();
+            // Restart simulation for the new floor context (optional, but keeps visual focus)
+            simulateRealTime(); 
+        });
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            // Add a brief spinning effect to the icon
+            const btn = document.getElementById('refreshBtn');
+            const svg = btn.querySelector('svg');
+            svg.classList.add('animate-spin');
+            
+            // Randomize whole floor again to simulate a massive update
+            const floorData = parkingData[currentFloor];
+            for (const spotId in floorData.spots) {
+                floorData.spots[spotId] = Math.random() > 0.5;
+            }
+            renderGrid();
+            
+            setTimeout(() => {
+                svg.classList.remove('animate-spin');
+            }, 500);
+        });
+
+        // Initialize App
+        window.onload = () => {
+            initData();
+            renderGrid();
+            simulateRealTime();
+        };
+
+    </script>
+</body>
+</html>
